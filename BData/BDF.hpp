@@ -49,10 +49,10 @@ struct Segment
 struct Parser
 {
     // Grammar:
-    // comments = ; until new line
-    // segment    = identifier [identifier] '{' { segment | assignment } '}' ;
+    // comments   = ';' until new line
+    // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
-    // value      = null | bool | number | string | '(' number { ',' number } ')' ;
+    // value      = null | bool | number | string ;
     static void parse(Mem::Allocator& allocator, StringView content, Segment& segment);
 };
     

@@ -242,7 +242,7 @@ struct Reader
             if(current() == '{')
             {
                 Segment& new_segment = segment.segments.emplace(
-                    string_name.string, allocator, identifier, string_name.string);
+                    identifier, allocator, identifier, string_name.string);
                 advance();
                 while(current() != '}' && current() != '\0')
                 {
@@ -252,6 +252,19 @@ struct Reader
 
                 advance(); // }
             }
+        }
+        else if(current() == '{')
+        {
+            Segment& new_segment = segment.segments.emplace(
+                identifier, allocator, identifier, "");
+            advance();
+            while(current() != '}' && current() != '\0')
+            {
+                skip_whitespace_and_comments();
+                read_segment(new_segment);
+            }
+
+            advance(); // }   
         }
     }
 };
