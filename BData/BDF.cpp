@@ -201,6 +201,10 @@ struct Reader
         {
             return read_number();
         }
+        else if(same_as_and_advance("null"))
+        {
+            return Value(ValueType::Null, {});
+        }
         else if(same_as_and_advance("true"))
         {
             return Value(ValueType::Bool, {.boolean = true});
@@ -214,7 +218,7 @@ struct Reader
             return read_string();
         }
 
-        return Value(ValueType::Null, {});
+        return Value(ValueType(-1), {});
     }
 
     void read_segment(Segment& segment)
@@ -289,7 +293,7 @@ Document::Document(Mem::Allocator& allocator, StringView path)
     }
 
     content = IO::File::read_all(allocator, path);
-    Parser::parse(allocator, Mem::from_bytes<char>(content), data.global_segment);
+    Parser::parse(allocator, StringView(Mem::from_bytes<const char>(content)), data.global_segment);
 }
 
 Document::~Document()

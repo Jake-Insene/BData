@@ -12,10 +12,10 @@ namespace BData::BDF
 enum class ValueType : u8
 {
     Null,
-    Bool,
-    Int,
-    UInt,
-    Float,
+    Bool, // Boolean
+    Int, // Signed 64 bits integer
+    UInt, // Unsigned 64 bits integer
+    Float, // 64 bits floating point number
     String, // Reflect plain text
 };
 
@@ -50,9 +50,11 @@ struct Parser
 {
     // Grammar:
     // comments   = ';' until new line
+    // number     = int | uint | float;
+    // scalar     = null | bool | number;
+    // value      = scalar | string;
     // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
-    // value      = null | bool | number | string ;
     static void parse(Mem::Allocator& allocator, StringView content, Segment& segment);
 };
     
