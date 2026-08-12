@@ -38,7 +38,9 @@ struct Segment
     String type;
     String name;
 
+    // By name otherwise ""
     StringMap<Segment> segments;
+    // By id
     StringMap<Value> values;
 
     Segment(Mem::Allocator& allocator, StringView type, StringView name)

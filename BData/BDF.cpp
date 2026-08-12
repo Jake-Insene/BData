@@ -246,7 +246,7 @@ struct Reader
             if(current() == '{')
             {
                 Segment& new_segment = segment.segments.emplace(
-                    identifier, allocator, identifier, string_name.string);
+                    string_name.string, allocator, identifier, string_name.string);
                 advance();
                 while(current() != '}' && current() != '\0')
                 {
@@ -259,8 +259,9 @@ struct Reader
         }
         else if(current() == '{')
         {
+            // Anonymus segment
             Segment& new_segment = segment.segments.emplace(
-                identifier, allocator, identifier, "");
+                "", allocator, identifier, "");
             advance();
             while(current() != '}' && current() != '\0')
             {
