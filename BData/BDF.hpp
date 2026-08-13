@@ -1,6 +1,6 @@
 #pragma once
-#include <collections/array.h>
-#include <collections/string_map.h>
+#include <Collections/Array.hpp>
+#include <Collections/StringMap.hpp>
 #include <math/vec2.h>
 #include <math/vec3.h>
 #include <math/vec4.h>
