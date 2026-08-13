@@ -1,5 +1,6 @@
 #pragma once
 #include <Collections/Array.hpp>
+#include <Collections/String.hpp>
 #include <Collections/StringMap.hpp>
 #include <math/vec2.h>
 #include <math/vec3.h>
@@ -29,21 +30,21 @@ struct Value
         i64 integer;
         u64 uinteger;
         f64 floating;
-        StringView string;
+        Collections::StringView string;
     };
 };
 
 struct Segment
 {
-    String type;
-    String name;
+    Collections::String type;
+    Collections::String name;
 
     // By name otherwise ""
-    StringMap<Segment> segments;
+    Collections::StringMap<Segment> segments;
     // By id
-    StringMap<Value> values;
+    Collections::StringMap<Value> values;
 
-    Segment(Mem::Allocator& allocator, StringView type, StringView name)
+    Segment(Mem::Allocator& allocator, Collections::StringView type, Collections::StringView name)
     : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4), values(allocator, 4)
     {}
 };
@@ -57,7 +58,7 @@ struct Parser
     // value      = scalar | string;
     // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
-    static void parse(Mem::Allocator& allocator, StringView content, Segment& segment);
+    static void parse(Mem::Allocator& allocator, Collections::StringView content, Segment& segment);
 };
     
 struct Document
@@ -76,7 +77,7 @@ struct Document
     Mem::Allocator& allocator;
     Slice<u8> content;
 
-    Document(Mem::Allocator& allocator, StringView path);
+    Document(Mem::Allocator& allocator, Collections::StringView path);
     ~Document();
 };
 

@@ -24,17 +24,17 @@ static bool is_identifier_character(const char c)
 struct Reader
 {
     Mem::Allocator& allocator;
-    StringView content;
+    Collections::StringView content;
     usize position;
 
-    Reader(Mem::Allocator& allocator, StringView content)
+    Reader(Mem::Allocator& allocator, Collections::StringView content)
     : allocator(allocator), content(content), position(0)
     {}
 
     char current() const { return position < content.len ? content[position] : '\0'; }
     void advance() { position++; }
 
-    bool same_as_and_advance(StringView id)
+    bool same_as_and_advance(Collections::StringView id)
     {
         for(usize i = 0; i < id.len; i++)
         {
@@ -85,7 +85,7 @@ struct Reader
         }
     }
 
-    StringView read_identifier()
+    Collections::StringView read_identifier()
     {
         usize begin = position;
 
@@ -107,8 +107,8 @@ struct Reader
             advance();
         }
 
-        StringView value_no_decimal = content.add(begin).slice(position - begin);
-        StringView value_decimal = {};
+        Collections::StringView value_no_decimal = content.add(begin).slice(position - begin);
+        Collections::StringView value_decimal = {};
         usize decimal_begin = 0;
         if(current() == '.')
         {
@@ -187,7 +187,7 @@ struct Reader
             advance();
         }
 
-        StringView str = content.add(begin).slice(position - begin);
+        Collections::StringView str = content.add(begin).slice(position - begin);
         advance(); // "
 
         return Value(ValueType::String, {.string = str});
@@ -223,7 +223,7 @@ struct Reader
 
     void read_segment(Segment& segment)
     {
-        StringView identifier = {};
+        Collections::StringView identifier = {};
         if(is_identifier_start(current()))
         {
             identifier = read_identifier();
@@ -274,7 +274,7 @@ struct Reader
     }
 };
 
-void Parser::parse(Mem::Allocator& allocator, StringView content, Segment& segment)
+void Parser::parse(Mem::Allocator& allocator, Collections::StringView content, Segment& segment)
 {
     Reader reader{allocator, content};
 
@@ -285,7 +285,7 @@ void Parser::parse(Mem::Allocator& allocator, StringView content, Segment& segme
     }
 }
 
-Document::Document(Mem::Allocator& allocator, StringView path)
+Document::Document(Mem::Allocator& allocator, Collections::StringView path)
 : data(allocator), allocator(allocator)
 {
     if(!IO::File::exists(allocator, path))
@@ -294,7 +294,8 @@ Document::Document(Mem::Allocator& allocator, StringView path)
     }
 
     content = IO::File::read_all(allocator, path);
-    Parser::parse(allocator, StringView(Mem::from_bytes<const char>(content)), data.global_segment);
+    Parser::parse(allocator, Collections::StringView(Mem::from_bytes<const char>(content)),
+        data.global_segment);
 }
 
 Document::~Document()
