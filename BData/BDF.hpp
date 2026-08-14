@@ -79,6 +79,8 @@ struct Document
 
     Document(Mem::Allocator& allocator, Collections::StringView path);
     ~Document();
+
+    Segment& global_segment() { return data.global_segment; }
 };
 
 }
