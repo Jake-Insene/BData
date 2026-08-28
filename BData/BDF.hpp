@@ -2,9 +2,9 @@
 #include <Collections/Array.hpp>
 #include <Collections/String.hpp>
 #include <Collections/StringMap.hpp>
-#include <math/vec2.h>
-#include <math/vec3.h>
-#include <math/vec4.h>
+#include <Math/vec2.h>
+#include <Math/vec3.h>
+#include <Math/vec4.h>
 
 
 namespace BData::BDF
