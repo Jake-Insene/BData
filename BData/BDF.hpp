@@ -18,6 +18,9 @@ enum class ValueType : u8
     UInt, // Unsigned 64 bits integer
     Float, // 64 bits floating point number
     String, // Reflect plain text
+    Vector2, // 2 dimension 32 bits vector
+    Vector3, // 3 dimension 32 bits vector
+    Vector4, // 4 dimension 32 bits vector
 };
 
 struct Value
@@ -31,6 +34,9 @@ struct Value
         u64 uinteger;
         f64 floating;
         Collections::StringView string;
+        Vector2 vec2;
+        Vector3 vec3;
+        Vector4 vec4;
     };
 };
 
@@ -53,11 +59,13 @@ struct Parser
 {
     // Grammar:
     // comments   = ';' until new line
-    // number     = int | uint | float;
-    // scalar     = null | bool | number;
-    // value      = scalar | string;
+    // operator   = - ; This must to be at the left side of a number, spaces make it invalid
+    // number     = [-] (int | uint | float) ;
+    // scalar     = null | bool | number ;
+    // value      = scalar | string ;
     // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
+    // the following ones are one line: assignment
     static void parse(Mem::Allocator& allocator, Collections::StringView content, Segment& segment);
 };
     

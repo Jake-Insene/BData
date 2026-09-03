@@ -32,7 +32,13 @@ struct Reader
     {}
 
     char current() const { return position < content.len ? content[position] : '\0'; }
+    char next(usize offset) const { return position + offset < content.len ? content[position + offset] : '\0'; }
     void advance() { position++; }
+
+    bool can_be_a_number()
+    {
+        return is_digit(current()) || (current() == '-' && is_digit(next(1)));
+    }
 
     bool same_as_and_advance(Collections::StringView id)
     {
@@ -101,6 +107,12 @@ struct Reader
     {
         bool is_real = false;
 
+        bool is_negative = current() == '-';
+        if(is_negative)
+        {
+            advance();
+        }
+
         usize begin = position;
         while(is_digit(current()))
         {
@@ -124,7 +136,7 @@ struct Reader
         }
         
         bool is_unsigned = false;
-        if(current() == 'u')
+        if(current() == 'u' || current() == 'U')
         {
             is_unsigned = true;
         }
@@ -142,12 +154,17 @@ struct Reader
             {
                 v.integer = v.uinteger * 10 + (c - '0');
             }
+
+            if(is_negative)
+            {
+                v.integer = -v.integer;
+            }
         }
 
         // decimal
         if(is_real)
         {
-            f64 real = v.integer;
+            f64 real = Math::abs(v.integer);
             v.floating = real;
             
             f64 decimal = 0.0;
@@ -160,6 +177,10 @@ struct Reader
             }
 
             v.floating += decimal / scale;
+            if(is_negative)
+            {
+                v.floating = -v.floating;
+            }
         }
 
         if(is_real)
@@ -193,11 +214,62 @@ struct Reader
         return Value(ValueType::String, {.string = str});
     }
 
+    Value read_vector(const u32 component_count)
+    {
+        DebugAssert(component_count > 1 && component_count <= 4, "invalid component count");
+        u32 encountered_components = 0;
+
+        advance(); // (
+        skip_whitespace_and_comments();
+
+        Value vector{ValueType::Vector2, {.vec2 = {}}};
+        if(component_count == 3)
+        {
+            vector.type = ValueType::Vector3;
+        }
+        else if(component_count == 4)
+        {
+            vector.type = ValueType::Vector4;
+        }
+
+        while(can_be_a_number()
+            && current() != '\0'
+            && encountered_components < component_count)
+        {            
+            Value component = read_number();
+            if(component.type == ValueType::UInt)
+            {
+                return Value{ValueType(-1), {}};
+            }
+
+            if(component.type == ValueType::Int)
+            {
+                vector.vec4[encountered_components] = component.integer;
+            }
+            if(component.type == ValueType::Float)
+            {
+                vector.vec4[encountered_components] = component.floating;
+            }
+
+            encountered_components++;
+            skip_whitespace_and_comments();
+            if(current() == ',')
+            {
+                advance();
+            }
+            skip_whitespace_and_comments();
+        }
+
+        advance(); // )
+
+        return vector;
+    }
+
     Value read_value()
     {
         skip_whitespace_and_comments();
 
-        if(is_digit(current()))
+        if(can_be_a_number())
         {
             return read_number();
         }
@@ -212,6 +284,22 @@ struct Reader
         else if(same_as_and_advance("false"))
         {
             return Value(ValueType::Bool, {.boolean = false});
+        }
+        else if(same_as_and_advance("Vec2"))
+        {
+            return read_vector(2);
+        }
+        else if(same_as_and_advance("Vec3"))
+        {
+            return read_vector(3);
+        }
+        else if(same_as_and_advance("Vec4"))
+        {
+            return read_vector(4);
+        }
+        else if(same_as_and_advance("Rect2D"))
+        {
+            return read_vector(4);
         }
         else if(current() == '"')
         {
@@ -252,6 +340,7 @@ struct Reader
                 {
                     skip_whitespace_and_comments();
                     read_segment(new_segment);
+                    advance_until_new_line(); // a statement should be one line
                 }
 
                 advance(); // }
@@ -267,6 +356,7 @@ struct Reader
             {
                 skip_whitespace_and_comments();
                 read_segment(new_segment);
+                advance_until_new_line(); // a statement should be one line
             }
 
             advance(); // }   
