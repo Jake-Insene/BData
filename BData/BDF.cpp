@@ -53,6 +53,11 @@ struct Reader
         position++;
     }
 
+    void simple_error(Collections::StringView msg)
+    {
+        Format::format<true>(err, "{}({},{}):{}", path, line, column, msg);
+    }
+
     void expected(char character)
     {
         if(current() == character)
@@ -89,6 +94,17 @@ struct Reader
     void advance_until_new_line()
     {
         while(current() != '\n' && current() != '\0')
+        {
+            advance();
+        }
+    }
+
+    void skip_whitespace()
+    {
+        while(current() == ' '
+            || current() == '\t'
+            || current() == '\r'
+            || current() == '\n')
         {
             advance();
         }
@@ -243,7 +259,7 @@ struct Reader
         u32 encountered_components = 0;
 
         expected('(');
-        skip_whitespace_and_comments();
+        skip_whitespace();
 
         Value vector{ValueType::Vector2, {.vec2 = {}}};
         if(component_count == 3)
@@ -275,12 +291,12 @@ struct Reader
             }
 
             encountered_components++;
-            skip_whitespace_and_comments();
+            skip_whitespace();
             if(current() == ',')
             {
                 advance();
             }
-            skip_whitespace_and_comments();
+            skip_whitespace();
         }
 
         expected(')');
@@ -297,10 +313,10 @@ struct Reader
 
         while(current() != ']')
         {
-            skip_whitespace_and_comments();
+            skip_whitespace();
             Value new_value = read_value(segment);
             (void)segment.arrays.add(new_value);
-            skip_whitespace_and_comments();
+            skip_whitespace();
 
             if(current() == '\0') // exceptional case
             {
@@ -319,7 +335,7 @@ struct Reader
 
     Value read_value(Segment& segment)
     {
-        skip_whitespace_and_comments();
+        skip_whitespace();
 
         if(can_be_a_number())
         {
@@ -367,30 +383,31 @@ struct Reader
 
     void read_segment(Segment& segment)
     {
-        Collections::StringView identifier = {};
-        if(is_identifier_start(current()))
+        skip_whitespace_and_comments();
+
+        Collections::StringView identifier = read_identifier();
+        if(identifier.len == 0)
         {
-            identifier = read_identifier();
+            simple_error("an identifier was expected");
         }
 
-        skip_whitespace_and_comments();
+        skip_whitespace();
 
         if(current() == '=') // value
         {
             advance();
-            skip_whitespace_and_comments();
+            skip_whitespace();
             Value value = read_value(segment);
             segment.values.emplace(identifier, value);
         }
         else if(current() == '"')
         {
             Value string_name = read_string();
-            skip_whitespace_and_comments();
+            skip_whitespace();
 
             if(current() == '{')
             {
-                Segment& new_segment = segment.segments.emplace(
-                    string_name.string, allocator, identifier, string_name.string);
+                Segment& new_segment = segment.segments.emplace(allocator, identifier, string_name.string);
                 advance();
 
                 while(current() != '}')
@@ -412,8 +429,7 @@ struct Reader
         else if(current() == '{')
         {
             // Anonymus segment
-            Segment& new_segment = segment.segments.emplace(
-                "", allocator, identifier, "");
+            Segment& new_segment = segment.segments.emplace(allocator, identifier, "");
             advance();
 
             while(current() != '}')
@@ -437,7 +453,7 @@ struct Reader
             {
                 return;
             }
-            Format::format<true>(err, "{}({},{}): invalid expresion", path, line, column);
+            simple_error("invalid expression");
         }
     }
 };
@@ -451,6 +467,7 @@ void Parser::parse(Mem::Allocator& allocator, Collections::StringView path, Coll
     {
         reader.skip_whitespace_and_comments();
         reader.read_segment(segment);
+        reader.skip_whitespace_and_comments();
     }
 }
 

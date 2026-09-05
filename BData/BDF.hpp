@@ -74,7 +74,7 @@ struct Segment
     Collections::String name;
 
     // By name otherwise ""
-    Collections::StringMap<Segment> segments;
+    Collections::Array<Segment> segments;
     // By id
     Collections::StringMap<Value> values;
 
@@ -82,7 +82,7 @@ struct Segment
     Collections::Array<Value> arrays;
 
     Segment(Mem::Allocator& allocator, Collections::StringView type, Collections::StringView name)
-    : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4), values(allocator, 4),
+    : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4, {}), values(allocator, 4),
     arrays(allocator, 4, {})
     {}
 
