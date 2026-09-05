@@ -24,16 +24,46 @@ static bool is_identifier_character(const char c)
 struct Reader
 {
     Mem::Allocator& allocator;
+    Collections::StringView path;
     Collections::StringView content;
+    const IO::Writer& err;
     usize position;
+    usize line;
+    usize column;
 
-    Reader(Mem::Allocator& allocator, Collections::StringView content)
-    : allocator(allocator), content(content), position(0)
+    Reader(Mem::Allocator& allocator, Collections::StringView path, Collections::StringView content,
+        const IO::Writer& err)
+    : allocator(allocator), path(path), content(content), err(err), position(0), line(1), column(1)
     {}
 
     char current() const { return position < content.len ? content[position] : '\0'; }
     char next(usize offset) const { return position + offset < content.len ? content[position + offset] : '\0'; }
-    void advance() { position++; }
+    void advance()
+    {
+        if(current() == '\n')
+        {
+            line++;
+            column = 1;
+        }
+        else
+        {
+            column++;
+        }
+
+        position++;
+    }
+
+    void expected(char character)
+    {
+        if(current() == character)
+        {
+            advance();
+            return;
+        }
+
+        Collections::StringView character_str{&character, 1};
+        Format::format<true>(err, "{}({},{}):'{}' was expected", path, line, column, character_str);
+    }
 
     bool can_be_a_number()
     {
@@ -42,17 +72,10 @@ struct Reader
 
     bool same_as_and_advance(Collections::StringView id)
     {
-        for(usize i = 0; i < id.len; i++)
+        Collections::StringView next_slice = content.add(position).slice(id.len);
+        if(!next_slice.equals(id))
         {
-            if(position+i >= content.len)
-            {
-                return false;
-            }
-
-            if(content[position + i] != id[i])
-            {
-                return false;
-            }
+            return false;
         }
 
         for(usize i = 0; i < id.len; i++)
@@ -200,7 +223,7 @@ struct Reader
 
     Value read_string()
     {
-        advance(); // "
+        expected('"');
         usize begin = position;
 
         while(current() != '"' && current() != '\0')
@@ -209,7 +232,7 @@ struct Reader
         }
 
         Collections::StringView str = content.add(begin).slice(position - begin);
-        advance(); // "
+        expected('"');
 
         return Value(ValueType::String, {.string = str});
     }
@@ -219,7 +242,7 @@ struct Reader
         DebugAssert(component_count > 1 && component_count <= 4, "invalid component count");
         u32 encountered_components = 0;
 
-        advance(); // (
+        expected('(');
         skip_whitespace_and_comments();
 
         Value vector{ValueType::Vector2, {.vec2 = {}}};
@@ -260,12 +283,41 @@ struct Reader
             skip_whitespace_and_comments();
         }
 
-        advance(); // )
+        expected(')');
 
         return vector;
     }
 
-    Value read_value()
+    Value read_array(Segment& segment)
+    {
+        expected('[');
+
+        Value value{ValueType::Array, {}};
+        usize begin = segment.arrays.count;
+
+        while(current() != ']')
+        {
+            skip_whitespace_and_comments();
+            Value new_value = read_value(segment);
+            (void)segment.arrays.add(new_value);
+            skip_whitespace_and_comments();
+
+            if(current() == '\0') // exceptional case
+            {
+                return Value(ValueType::Null, {});
+            }
+            else if(current() == ',')
+            {
+                advance();
+            }
+        }
+
+        value.array.begin = begin;
+        value.array.end = segment.arrays.count;
+        return value;
+    }
+
+    Value read_value(Segment& segment)
     {
         skip_whitespace_and_comments();
 
@@ -305,6 +357,10 @@ struct Reader
         {
             return read_string();
         }
+        else if(current() == '[')
+        {
+            return read_array(segment);
+        }
 
         return Value(ValueType(-1), {});
     }
@@ -323,7 +379,7 @@ struct Reader
         {
             advance();
             skip_whitespace_and_comments();
-            Value value = read_value();
+            Value value = read_value(segment);
             segment.values.emplace(identifier, value);
         }
         else if(current() == '"')
@@ -336,14 +392,21 @@ struct Reader
                 Segment& new_segment = segment.segments.emplace(
                     string_name.string, allocator, identifier, string_name.string);
                 advance();
-                while(current() != '}' && current() != '\0')
+
+                while(current() != '}')
                 {
                     skip_whitespace_and_comments();
                     read_segment(new_segment);
                     advance_until_new_line(); // a statement should be one line
+                    skip_whitespace_and_comments();
+
+                    if(current() == '\0') // exceptional case
+                    {
+                        return;
+                    }
                 }
 
-                advance(); // }
+                expected('}');
             }
         }
         else if(current() == '{')
@@ -352,21 +415,29 @@ struct Reader
             Segment& new_segment = segment.segments.emplace(
                 "", allocator, identifier, "");
             advance();
-            while(current() != '}' && current() != '\0')
+
+            while(current() != '}')
             {
                 skip_whitespace_and_comments();
                 read_segment(new_segment);
                 advance_until_new_line(); // a statement should be one line
+                skip_whitespace_and_comments();
+
+                if(current() == '\0') // exceptional case
+                {
+                    return;
+                }
             }
 
-            advance(); // }   
+            expected('}');
         }
     }
 };
 
-void Parser::parse(Mem::Allocator& allocator, Collections::StringView content, Segment& segment)
+void Parser::parse(Mem::Allocator& allocator, Collections::StringView path, Collections::StringView content,
+    Segment& segment, const IO::Writer& err)
 {
-    Reader reader{allocator, content};
+    Reader reader{allocator, path, content, err};
 
     while(reader.position < content.len)
     {
@@ -375,24 +446,24 @@ void Parser::parse(Mem::Allocator& allocator, Collections::StringView content, S
     }
 }
 
-Document::Document(Mem::Allocator& allocator, Collections::StringView path)
-: data(allocator), allocator(allocator)
+Document::Document(Mem::Allocator& allocator, Collections::StringView path, const IO::Writer& err)
+: data(allocator)
 {
     if(!IO::File::exists(allocator, path))
     {
         return;
     }
 
-    content = IO::File::read_all(allocator, path);
-    Parser::parse(allocator, Collections::StringView(Mem::from_bytes<const char>(content)),
-        data.global_segment);
+    data.content = IO::File::read_all(allocator, path);
+    Parser::parse(allocator, path, Collections::StringView(Mem::from_bytes<const char>(data.content)),
+        data.global_segment, err);
 }
 
 Document::~Document()
 {
-    if(content.ptr() != nullptr)
+    if(data.content.ptr() != nullptr)
     {
-        allocator.free(content);
+        data.allocator.free(data.content);
     }
 }
 

@@ -21,11 +21,18 @@ enum class ValueType : u8
     Vector2, // 2 dimension 32 bits vector
     Vector3, // 3 dimension 32 bits vector
     Vector4, // 4 dimension 32 bits vector
+    Array, // Arbitrary sized collection of values
 };
 
 struct Value
 {
     ValueType type = ValueType::Null;
+
+    struct Array
+    {
+        usize begin;
+        usize end;
+    };
 
     union
     {
@@ -37,6 +44,7 @@ struct Value
         Vector2 vec2;
         Vector3 vec3;
         Vector4 vec4;
+        Array array;
     };
 };
 
@@ -50,9 +58,18 @@ struct Segment
     // By id
     Collections::StringMap<Value> values;
 
+    // to create subviews
+    Collections::Array<Value> arrays;
+
     Segment(Mem::Allocator& allocator, Collections::StringView type, Collections::StringView name)
-    : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4), values(allocator, 4)
+    : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4), values(allocator, 4),
+    arrays(allocator, 4, {})
     {}
+
+    Slice<Value> get_array(const Value::Array& array)
+    {
+        return arrays.slice().add(array.begin).slice(array.end - array.begin);
+    }
 };
 
 struct Parser
@@ -61,12 +78,15 @@ struct Parser
     // comments   = ';' until new line
     // operator   = - ; This must to be at the left side of a number, spaces make it invalid
     // number     = [-] (int | uint | float) ;
+    // bool       = true | false ;
     // scalar     = null | bool | number ;
     // value      = scalar | string ;
+    // array      = '[' value [, value] ']' ;
     // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
     // the following ones are one line: assignment
-    static void parse(Mem::Allocator& allocator, Collections::StringView content, Segment& segment);
+    static void parse(Mem::Allocator& allocator, Collections::StringView path, Collections::StringView content,
+        Segment& segment, const IO::Writer& err);
 };
     
 struct Document
@@ -75,17 +95,17 @@ struct Document
     DisableMove(Document);
     struct InternalData
     {
+        Mem::Allocator& allocator;
+        Slice<u8> content;
+        
         Segment global_segment;
 
         InternalData(Mem::Allocator& allocator)
-        : global_segment(allocator, "--global--", "")
+        : allocator(allocator), content(), global_segment(allocator, "--global--", "")
         {}
     } data;
 
-    Mem::Allocator& allocator;
-    Slice<u8> content;
-
-    Document(Mem::Allocator& allocator, Collections::StringView path);
+    Document(Mem::Allocator& allocator, Collections::StringView path, const IO::Writer& err);
     ~Document();
 
     Segment& global_segment() { return data.global_segment; }
