@@ -431,6 +431,14 @@ struct Reader
 
             expected('}');
         }
+        else
+        {
+            if(current() == '\0')
+            {
+                return;
+            }
+            Format::format<true>(err, "{}({},{}): invalid expresion", path, line, column);
+        }
     }
 };
 

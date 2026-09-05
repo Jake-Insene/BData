@@ -46,6 +46,26 @@ struct Value
         Vector4 vec4;
         Array array;
     };
+
+    static constexpr Value Bool(bool boolean)
+    {
+        return Value{ValueType::Bool, {.boolean = boolean}};
+    }
+
+    static constexpr Value Integer(i64 integer)
+    {
+        return Value{ValueType::Bool, {.integer = integer}};
+    }
+
+    static constexpr Value UInteger(u64 uinteger)
+    {
+        return Value{ValueType::Bool, {.uinteger = uinteger}};
+    }
+
+    static constexpr Value Floating(f64 floating)
+    {
+        return Value{ValueType::Bool, {.floating = floating}};
+    }
 };
 
 struct Segment
@@ -65,6 +85,16 @@ struct Segment
     : type(allocator, 0, type), name(allocator, 0, name), segments(allocator, 4), values(allocator, 4),
     arrays(allocator, 4, {})
     {}
+
+    Value get_value_or(Collections::StringView name, Value fallback)
+    {
+        if(values.has(name))
+        {
+            return values.get(name);
+        }
+
+        return fallback;
+    }
 
     Slice<Value> get_array(const Value::Array& array)
     {
