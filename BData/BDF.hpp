@@ -105,16 +105,18 @@ struct Segment
 struct Parser
 {
     // Grammar:
-    // comments   = ';' until new line
+    // comments   = ';' Until new line
     // operator   = - ; This must to be at the left side of a number, spaces make it invalid
     // number     = [-] (int | uint | float) ;
     // bool       = true | false ;
+    // vectorial  = 'Vec2' | 'Vec3' | 'Vec4' '(' number... ')' ;
+    // alias      : 'Rect2D' = Vec4 ;
     // scalar     = null | bool | number ;
     // value      = scalar | string ;
     // array      = '[' value [, value] ']' ;
     // segment    = identifier ["string"] '{' { segment | assignment } '}' ;
     // assignment = identifier '=' value ;
-    // the following ones are one line: assignment
+    // The following ones are one line: assignment
     static void parse(Mem::Allocator& allocator, Collections::StringView path, Collections::StringView content,
         Segment& segment, const IO::Writer& err);
 };

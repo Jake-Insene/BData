@@ -301,6 +301,12 @@ struct Reader
 
         expected(')');
 
+        if(encountered_components != component_count)
+        {
+            Format::format<true>(err, "{}({},{}):{} components were expected, only {} were provided",
+                path, line, column, component_count, encountered_components);
+        }
+
         return vector;
     }
 
