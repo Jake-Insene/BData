@@ -431,6 +431,14 @@ struct Reader
 
                 expected('}');
             }
+            else
+            {
+                if(current() == '\0')
+                {
+                    return;
+                }
+                simple_error("bad segment");
+            }
         }
         else if(current() == '{')
         {
